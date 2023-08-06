@@ -6,18 +6,18 @@ const app = express();
 const port = 3002;
 
 app.use(cors());
-app.use(express.json()); 
-
+app.use(express.json());
 
 let credentials = {};
 
-//get the credentials of arcgis server
+// Get the credentials of ArcGIS server
 app.post('/set-credentials', (req, res) => {
   credentials = req.body;
   res.send({ status: 'Credentials set' });
 });
 
-app.get('/data', async (req, res) => {
+// Get token
+app.get('/token', async (req, res) => {
   try {
     const cca = new msal.ConfidentialClientApplication({
       auth: {
@@ -27,14 +27,26 @@ app.get('/data', async (req, res) => {
       },
     });
 
-    //get the token
     const response = await cca.acquireTokenByClientCredential({
       scopes: ["https://graph.microsoft.com/.default"],
     });
 
+    res.send(response);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send(err);
+  }
+});
+
+// Get data
+app.get('/data', async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    console.log(token)
+
     const apiResponse = await fetch('https://graph.microsoft.com/v1.0/sites', {
       headers: {
-        'Authorization': `Bearer ${response.accessToken}`
+        'Authorization': token
       }
     });
 
