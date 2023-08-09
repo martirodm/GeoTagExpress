@@ -51,7 +51,6 @@ app.get('/getSites', async (req, res) => {
   let siteId;
   try {
     const token = req.headers.authorization;
-    console.log(siteName.site_name);
 
     const sitesResponse = await fetch('https://graph.microsoft.com/v1.0/sites', {
       headers: {
@@ -65,10 +64,11 @@ app.get('/getSites', async (req, res) => {
     sitesData.forEach(site => {
       if (siteName.site_name == site.name) {
         siteId = site.id;
+        siteWebUrl = site.webUrl;
       }
     });
     if (siteId != undefined) {
-      res.send(siteId);
+      res.json({ siteId, siteWebUrl });
     } else {
       res.send(null);
     }
@@ -82,20 +82,15 @@ app.get('/getSites', async (req, res) => {
 function getValueInsideBraces(str) {
   const match = str.match(/{(.*?)}/);
   if (match) {
-      return match[1];
+    return match[1];
   }
   return null;
 }
 
 app.get('/display-ff', async (req, res) => {
-  let dataFiles = [];
-  let dataFiles2 = [];
-  let folders = [];
-  let i = 0;
   try {
     const token = req.headers.authorization;
     const siteId = req.headers.siteid;
-    console.log(siteId);
 
     const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items?expand=fields', {
       headers: {
@@ -105,40 +100,7 @@ app.get('/display-ff', async (req, res) => {
       }
     });
     const data = await filesResponse.json();
-    dataFiles = data.value;
-
-    dataFiles.forEach(file => {
-      if (file.fields.ContentType == "Folder" && !file.webUrl.includes("_layouts")) {
-
-        console.log("--------Folder--------");
-        console.log("Folder ID:", getValueInsideBraces(file.eTag));
-        console.log("Folder name:", file.fields.FileLeafRef);
-        console.log("Folder url:", file.webUrl);
-        folders.push('/' + file.fields.FileLeafRef + '/');
-
-      } else if (file.fields.ContentType == "Document") {
-
-        console.log("---------File---------");
-        console.log("File name:", file.fields.FileLeafRef);
-        let newUrl = "/sites/Test1/Shared%20Documents/" + encodeURIComponent(file.fields.FileLeafRef.trim());
-        console.log(newUrl);
-        let previewUrl = "https://geosyscommt.sharepoint.com/sites/Test1/Shared%20Documents/Forms/AllItems.aspx?id=" + newUrl + "&parent=/sites/Test1/Shared%20Documents";
-        console.log("File preview url:", previewUrl);
-        console.log("File download url:", file.webUrl);
-
-        if (file.fields.TaxKeyword != null) {
-          dataFiles2 = file.fields.TaxKeyword;
-          dataFiles2.forEach(file2 => {
-            console.log("File label:", file2.Label);
-
-          });
-        }
-      }
-      i++;
-      console.log("");
-    });
-    console.log(folders);
-    console.log("number of files: " + i);
+    res.send(data);
 
   } catch (err) {
     console.log(err);
