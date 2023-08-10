@@ -11,41 +11,55 @@ app.use(express.json());
 let credentials = {};
 let siteName = {};
 
-// Get the credentials of ArcGIS server
+// Get the credentials of ArcGIS server.
 app.post('/set-credentials', (req, res) => {
   credentials = req.body;
   res.send({ status: 'Credentials set' });
 });
 
-// Get the site Name of ArcGIS server
+// Get the site Name of ArcGIS server.
 app.post('/set-siteName', (req, res) => {
   siteName = req.body;
   res.send({ status: 'Name set' });
 });
 
+// Function to check if a token is expired.
+function isTokenExpired(token) {
+  const currentTime = new Date();
+  return currentTime >= token.expiresOn;
+}
+
+// Initialize cachedToken variable
+let cachedToken = null;
+
 // Get token
 app.get('/token', async (req, res) => {
   try {
-    const cca = new msal.ConfidentialClientApplication({
-      auth: {
-        clientId: credentials.client_id,
-        authority: "https://login.microsoftonline.com/" + credentials.tenant_id,
-        clientSecret: credentials.client_secret,
-      },
-    });
+    if (!cachedToken || isTokenExpired(cachedToken)) {
+      const cca = new msal.ConfidentialClientApplication({
+        auth: {
+          clientId: credentials.client_id,
+          authority: "https://login.microsoftonline.com/" + credentials.tenant_id,
+          clientSecret: credentials.client_secret,
+        },
+      });
 
-    const response = await cca.acquireTokenByClientCredential({
-      scopes: ["https://graph.microsoft.com/.default"],
-    });
-    console.log("Token Generated Succesfully");
-    res.send(response);
+      const response = await cca.acquireTokenByClientCredential({
+        scopes: ["https://graph.microsoft.com/.default"],
+      });
+
+      cachedToken = response;
+    }
+
+    res.send(cachedToken);
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
   }
 });
 
-// Get data
+
+// Get data.
 app.get('/getSites', async (req, res) => {
   let sitesData = [];
   let siteId;
