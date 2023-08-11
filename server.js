@@ -122,6 +122,28 @@ app.get('/display-ff', async (req, res) => {
   }
 });
 
+app.get('/display-subff', async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const siteId = req.headers.siteid;
+    const folderId = req.headers.folderid;
+
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/'+folderId+'/children', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token
+      }
+    });
+    const data = await filesResponse.json();
+    res.send(data);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send(err);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
