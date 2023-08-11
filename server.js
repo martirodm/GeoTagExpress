@@ -105,30 +105,13 @@ app.get('/display-ff', async (req, res) => {
   try {
     const token = req.headers.authorization;
     const siteId = req.headers.siteid;
+    let folderId = req.headers.folderid;
 
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items?expand=fields', {
-      headers: {
-        'Content-Type': 'application/json',
-        'Prefer': 'apiversion=2.1',
-        'Authorization': token
-      }
-    });
-    const data = await filesResponse.json();
-    res.send(data);
+    if (folderId === "null"){
+      folderId = "root";
+    }
 
-  } catch (err) {
-    console.log(err);
-    res.status(500).send(err);
-  }
-});
-
-app.get('/display-subff', async (req, res) => {
-  try {
-    const token = req.headers.authorization;
-    const siteId = req.headers.siteid;
-    const folderId = req.headers.folderid;
-
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/'+folderId+'/children', {
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/'+folderId+'/children?&expand=listitem(expand=fields)', {
       headers: {
         'Content-Type': 'application/json',
         'Prefer': 'apiversion=2.0',
