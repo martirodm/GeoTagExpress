@@ -1,6 +1,7 @@
 const express = require('express');
 const msal = require('@azure/msal-node');
 const cors = require('cors');
+const fetch = import('node-fetch');
 
 const app = express();
 const port = 3002;
@@ -29,46 +30,56 @@ function isTokenExpired(token) {
   return currentTime >= token.expiresOn;
 }
 
-// Initialize cachedToken variable
+// Initialize cachedToken variable.
 let cachedToken = null;
 
-// Get token
+// Function to get a valid token.
+async function getValidToken() {
+  if (!cachedToken || isTokenExpired(cachedToken)) {
+    const cca = new msal.ConfidentialClientApplication({
+      auth: {
+        clientId: credentials.client_id,
+        authority: "https://login.microsoftonline.com/" + credentials.tenant_id,
+        clientSecret: credentials.client_secret,
+      },
+    });
+
+    const response = await cca.acquireTokenByClientCredential({
+      scopes: ["https://graph.microsoft.com/.default"],
+    });
+
+    cachedToken = response;
+  }
+
+  return cachedToken;
+}
+
+// Get token.
 app.get('/token', async (req, res) => {
   try {
-    if (!cachedToken || isTokenExpired(cachedToken)) {
-      const cca = new msal.ConfidentialClientApplication({
-        auth: {
-          clientId: credentials.client_id,
-          authority: "https://login.microsoftonline.com/" + credentials.tenant_id,
-          clientSecret: credentials.client_secret,
-        },
-      });
+    const token = await getValidToken();
+    res.send(token);
 
-      const response = await cca.acquireTokenByClientCredential({
-        scopes: ["https://graph.microsoft.com/.default"],
-      });
+    // console.clear();
+    console.log(token.accessToken);
 
-      cachedToken = response;
-    }
-
-    res.send(cachedToken);
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
   }
 });
 
-
 // Get data.
 app.get('/getSites', async (req, res) => {
   let sitesData = [];
   let siteId;
   try {
-    const token = req.headers.authorization;
+    const token = await getValidToken();
 
+    console.log(token.accessToken);
     const sitesResponse = await fetch('https://graph.microsoft.com/v1.0/sites', {
       headers: {
-        'Authorization': token
+        'Authorization': token.accessToken
       }
     });
 
@@ -93,29 +104,21 @@ app.get('/getSites', async (req, res) => {
   }
 });
 
-function getValueInsideBraces(str) {
-  const match = str.match(/{(.*?)}/);
-  if (match) {
-    return match[1];
-  }
-  return null;
-}
-
 app.get('/display-ff', async (req, res) => {
   try {
-    const token = req.headers.authorization;
+    const token = await getValidToken();
     const siteId = req.headers.siteid;
     let folderId = req.headers.folderid;
 
-    if (folderId === "null"){
+    if (folderId === "null") {
       folderId = "root";
     }
 
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/'+folderId+'/children?&expand=listitem(expand=fields)', {
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + folderId + '/children?&expand=listitem(expand=fields)', {
       headers: {
         'Content-Type': 'application/json',
         'Prefer': 'apiversion=2.0',
-        'Authorization': token
+        'Authorization': token.accessToken
       }
     });
     const data = await filesResponse.json();
