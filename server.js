@@ -1,7 +1,6 @@
 const express = require('express');
 const msal = require('@azure/msal-node');
 const cors = require('cors');
-const fetch = import('node-fetch');
 
 const app = express();
 const port = 3002;
@@ -59,10 +58,6 @@ app.get('/token', async (req, res) => {
   try {
     const token = await getValidToken();
     res.send(token);
-
-    // console.clear();
-    console.log(token.accessToken);
-
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
@@ -76,10 +71,9 @@ app.get('/getSites', async (req, res) => {
   try {
     const token = await getValidToken();
 
-    console.log(token.accessToken);
     const sitesResponse = await fetch('https://graph.microsoft.com/v1.0/sites', {
       headers: {
-        'Authorization': token.accessToken
+        'Authorization': token.accessToken,
       }
     });
 
@@ -97,7 +91,6 @@ app.get('/getSites', async (req, res) => {
     } else {
       res.send(null);
     }
-
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
@@ -123,7 +116,6 @@ app.get('/display-ff', async (req, res) => {
     });
     const data = await filesResponse.json();
     res.send(data);
-
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
