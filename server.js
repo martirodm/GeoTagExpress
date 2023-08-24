@@ -122,6 +122,150 @@ app.get('/display-ff', async (req, res) => {
   }
 });
 
+app.patch('/addTag', async (req, res) => {
+  try {
+    const token = await getValidToken();
+    const siteId = req.headers.siteid;
+    const tag = req.headers.tag;
+    let termGroupId;
+    let termSetId;
+    let termId;
+
+    //------------------------TERM GROUP---------------------------
+
+    const termGroupsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/groups', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken
+      }
+    });
+    const dataGroups = await termGroupsResponse.json();
+
+    const foundGroup = dataGroups.value.find(termGroup => termGroup.displayName === "GeoTag");
+
+    if (foundGroup) {
+      console.log("Found TermGroup GeoTag!");
+      termGroupId = foundGroup.id;
+    } else {
+      console.log("Creating TermGroup GeoTag...");
+      const urlencoded = new URLSearchParams();
+      urlencoded.append("displayName", "GeoTag");
+
+      const createTermGroupsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Prefer': 'apiversion=2.0',
+          'Authorization': token.accessToken
+        },
+        body: urlencoded,
+        redirect: 'follow'
+      });
+
+      const dataCreateGroups = await createTermGroupsResponse.json();
+      termGroupId = dataCreateGroups.id;
+    }
+
+    //------------------------TERM SET---------------------------
+
+    const termSetsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/groups/' + termGroupId + '/sets', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken
+      }
+    });
+    const dataSets = await termSetsResponse.json();
+
+    const foundSet = dataSets.value.find(termSet =>
+      termSet.localizedNames.some(localizedName => localizedName.name === "GeoTag")
+    );
+
+    if (foundSet) {
+      console.log("Found TermSet GeoTag!");
+      termSetId = foundSet.id;
+    } else {
+      console.log("Creating TermSet GeoTag...");
+
+      const createTermSetsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/sets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Prefer': 'apiversion=2.0',
+          'Authorization': token.accessToken
+        },
+        body: JSON.stringify({
+          "parentGroup": {
+            "id": termGroupId
+          },
+          "description": "GeoTag",
+          "localizedNames": [
+            {
+              "languageTag": "en-US",
+              "name": "GeoTag"
+            }
+          ]
+        }),
+        redirect: 'follow'
+      });
+
+      const dataCreateSets = await createTermSetsResponse.json();
+      termSetId = dataCreateSets.id;
+    }
+
+    //------------------------TERM---------------------------
+
+    const termResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/sets/' + termSetId + '/terms', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken
+      }
+    });
+    const dataTerms = await termResponse.json();
+
+    const foundTerm = dataTerms.value.find(term =>
+      term.labels.some(label => label.name === tag)
+    );
+
+    if (foundTerm) {
+      console.log("Found Term " + tag + "!");
+      termId = foundTerm.id;
+    } else {
+      console.log("Creating Term " + tag + "...");
+
+      const createTermResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/sets/' + termSetId + '/children', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Prefer': 'apiversion=2.0',
+          'Authorization': token.accessToken
+        },
+        body: JSON.stringify({
+          "labels": [
+            {
+              "languageTag": "en-US",
+              "name": tag,
+              "isDefault": true
+            }
+          ]
+        }),
+        redirect: 'follow'
+      });
+
+      const dataCreateTerms = await createTermResponse.json();
+      termId = dataCreateTerms.id;
+    }
+
+    res.send(termId);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send(err);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
