@@ -125,8 +125,10 @@ app.get('/display-ff', async (req, res) => {
 app.patch('/addTag', async (req, res) => {
   try {
     const token = await getValidToken();
-    const siteId = req.headers.siteid;
-    const tag = req.headers.tag;
+    const siteId = req.body.siteId;
+    const tag = req.body.tag;
+    const fileTags = req.body.fileTags;
+    const fileId = req.body.fileId;
     let termGroupId;
     let termSetId;
     let termId;
@@ -226,7 +228,7 @@ app.patch('/addTag', async (req, res) => {
     const dataTerms = await termResponse.json();
 
     const foundTerm = dataTerms.value.find(term =>
-      term.labels.some(label => label.name === tag)
+      term.labels.some(label => label.name.toLowerCase() === tag.toLowerCase())
     );
 
     if (foundTerm) {
@@ -258,7 +260,25 @@ app.patch('/addTag', async (req, res) => {
       termId = dataCreateTerms.id;
     }
 
-    res.send(termId);
+    const oldTags = fileTags.map(tag => tag.label + "|" + tag.termGuid + ";");
+
+    const createTagResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken
+      },
+      body: JSON.stringify({
+        "cdef4407a64540da8a8333cd362125c4": oldTags + tag + "|" + termId
+      }),
+      redirect: 'follow'
+    });
+
+    const dataCreateTag = await createTagResponse.json();
+    //console.log(dataCreateTag)
+
+    res.send({ label: tag, termGuid: termId });
 
   } catch (err) {
     console.log(err);
