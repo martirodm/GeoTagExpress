@@ -209,7 +209,7 @@ app.get('/display-ff', async (req, res) => {
       folderId = "root";
     }
 
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + folderId + '/children?&expand=listitem(expand=fields)', {
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + folderId + '/children?&select=id,eTag,package&expand=listitem(expand=fields(select=FileLeafRef,DocIcon,GeoTag,ContentType))', {
       headers: {
         'Content-Type': 'application/json',
         'Prefer': 'apiversion=2.0',
@@ -217,28 +217,6 @@ app.get('/display-ff', async (req, res) => {
       }
     });
     const data = await filesResponse.json();
-    res.send(data);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send(err);
-  }
-});
-
-app.get('/get-DWGfile', async (req, res) => {
-  try {
-    const token = await getValidToken();
-    const siteId = req.headers.siteid;
-    let fileId = req.headers.fileid;
-
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&expand=listitem(expand=fields(select=docicon,taxonomy,contentType))', {
-      headers: {
-        'Content-Type': 'application/json',
-        'Prefer': 'apiversion=2.0',
-        'Authorization': token.accessToken
-      }
-    });
-    const data = await filesResponse.json();
-    console.log(data)
     res.send(data);
   } catch (err) {
     console.log(err);
@@ -341,6 +319,7 @@ app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
       }
     });
     const dataTerms = await termResponse.json();
+    //console.log(dataTerms)
 
     const foundTerm = dataTerms.value.find(term =>
       term.labels.some(label => label.name.toLowerCase() === nameTag.toLowerCase())
@@ -371,6 +350,28 @@ app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
     res.status(500).send(err);
   }
 
+});
+
+app.get('/seeDataTaggedFile', async (req, res) => {
+  try {
+    const token = await getValidToken();
+    const siteId = req.headers.siteid;
+    let fileId = req.headers.fileid;
+
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&select=id,name&expand=listitem(select=webUrl)', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken
+      }
+    });
+    const data = await filesResponse.json();
+    console.log(data)
+    res.send(data);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send(err);
+  }
 });
 
 app.listen(port, () => {
