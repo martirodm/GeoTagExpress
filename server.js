@@ -358,7 +358,7 @@ app.get('/seeDataTaggedFile', async (req, res) => {
     const siteId = req.headers.siteid;
     let fileId = req.headers.fileid;
 
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&select=id,name&expand=listitem(select=webUrl)', {
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&select=id,name&expand=listitem(expand=fields(select=GeoTag))', {
       headers: {
         'Content-Type': 'application/json',
         'Prefer': 'apiversion=2.0',
