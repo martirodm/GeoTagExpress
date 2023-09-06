@@ -304,6 +304,73 @@ app.patch('/addTag', termMiddleware, async (req, res) => {
   }
 });
 
+// ----- DELETE TAG ----- //
+
+app.patch('/delTag', termMiddleware, async (req, res) => {
+  try {
+    const token = await getValidToken();
+    const siteId = req.headers.siteid;
+    const tag = req.body.tag;
+    const fileTags = req.body.fileTags;
+    const fileId = req.body.fileId;
+
+    console.log("File id: ", fileId);
+
+    //------------------------TERM---------------------------
+
+    // Fetch the term ID for the specified tag
+    const termResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/sets/' + req.termData.termSetId + '/terms', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken,
+      },
+    });
+    const dataTerms = await termResponse.json();
+
+    const foundTerm = dataTerms.value.find(term =>
+      term.labels.some(label => label.name.toLowerCase() === tag.toLowerCase())
+    );
+
+    if (!foundTerm) {
+      return res.status(404).send({ message: "Term not found!" });
+    }
+
+    const termId = foundTerm.id;
+
+    //---------------------DELETE TAG---------------------------
+
+    // Construct the new list of tags (excluding the one to be deleted)
+    const updatedTags = fileTags
+      .filter(existingTag => existingTag.label.toLowerCase() !== tag.toLowerCase())
+      .map(tag => tag.label + "|" + tag.termGuid + ";");  // To format the output: "TAG" | "termGuid";
+    console.log("Updated tags: " + updatedTags);
+
+    // Update the file's tags
+    const updateTagsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'apiversion=2.0',
+        'Authorization': token.accessToken,
+      },
+      body: JSON.stringify({
+        "o5c3b196e2d0422495d173d6e391d21f": updatedTags.join(''),
+      }),
+      redirect: 'follow',
+    });
+
+    const dataUpdateTags = await updateTagsResponse.json();
+    console.log("Data update tags: ", JSON.stringify(dataUpdateTags, null, 2));
+
+    res.send({ label: tag, termGuid: termId });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send(err);
+  }
+});
+
 app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
 
   try {
@@ -349,7 +416,6 @@ app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
     console.log(err);
     res.status(500).send(err);
   }
-
 });
 
 app.get('/seeDataTaggedFile', async (req, res) => {
@@ -358,7 +424,7 @@ app.get('/seeDataTaggedFile', async (req, res) => {
     const siteId = req.headers.siteid;
     let fileId = req.headers.fileid;
 
-    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&select=id,name&expand=listitem(expand=fields(select=GeoTag))', {
+    const filesResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/items/' + fileId + '?&select=id,eTag,name&expand=listitem(expand=fields(select=GeoTag))', {
       headers: {
         'Content-Type': 'application/json',
         'Prefer': 'apiversion=2.0',
