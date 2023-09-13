@@ -1,0 +1,2 @@
+2023-09-13 15:38:34 - Starting C:\Program Files\nodejs\node.exe  --harmony C:\Users\marti\Desktop\GEOSYS\ArcGISExperienceBuilder\GeoTagExpress\node_modules\node-windows\lib\wrapper.js --file C:\Users\marti\Desktop\GEOSYS\ArcGISExperienceBuilder\GeoTagExpress\server.js --scriptoptions= --log "ExpressGEOTAG wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2023-09-13 15:38:34 - Started 13000
