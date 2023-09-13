@@ -1,3 +1,5 @@
+const https = require('https');
+const fs = require('fs');
 const express = require('express');
 const msal = require('@azure/msal-node');
 const cors = require('cors');
@@ -16,6 +18,13 @@ app.post('/set-credentials', (req, res) => {
   credentials = req.body;
   res.send({ status: 'Credentials set' });
 });
+
+const httpsOptions = {
+  key: fs.readFileSync('server.key'),  // replace with actual path
+  cert: fs.readFileSync('server.cert') // replace with actual path
+};
+
+const server = https.createServer(httpsOptions, app);
 
 // Get the site Name of ArcGIS server.
 app.post('/set-siteName', (req, res) => {
@@ -471,6 +480,6 @@ app.get('/seeDataTaggedFile', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+server.listen(port, () => {
+  console.log(`Server running on https://localhost:${port}`);
 });
