@@ -276,28 +276,43 @@ app.patch('/addTag', termMiddleware, async (req, res) => {
       termId = dataCreateTerms.id;
     }
 
-    //---------------------ADD TAG---------------------------
+    //---------------------GET GEOTAG COLUMN---------------------------
 
-    const oldTags = fileTags.map(tag => tag.label + "|" + tag.termGuid + ";");
-
-    const createTagResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
-      method: 'PATCH',
+    const getColumnResponse = await fetch("https://graph.microsoft.com/v1.0/sites/" + siteId + "/lists/Documents/columns?$select=hidden,id,name,displayName&$filter=displayName eq 'GeoTag_0'", {
       headers: {
         'Content-Type': 'application/json',
-        'Prefer': 'apiversion=2.0',
+        'Prefer': 'apiversion=2.1',
         'Authorization': token.accessToken
-      },
-      body: JSON.stringify({
-        "o5c3b196e2d0422495d173d6e391d21f": oldTags + tag + "|" + termId
-      }),
-      redirect: 'follow'
+      }
     });
+    const dataColumn = await getColumnResponse.json();
+    if (dataColumn.value.length === 0) {
+      res.send({ label: "columnNotFound", termGuid: "columnNotFound" });
+    } else {
+      nameGeoTAGColumn = dataColumn.value[0].name
+      //console.log(nameGeoTAGColumn)
+      //---------------------ADD TAG---------------------------
 
-    const dataCreateTag = await createTagResponse.json();
-    //console.log(dataCreateTag)
+      const oldTags = fileTags.map(tag => tag.label + "|" + tag.termGuid + ";");
 
-    res.send({ label: tag, termGuid: termId });
+      const createTagResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Prefer': 'apiversion=2.0',
+          'Authorization': token.accessToken
+        },
+        body: JSON.stringify({
+          [nameGeoTAGColumn]: oldTags + tag + "|" + termId
+        }),
+        redirect: 'follow'
+      });
 
+      const dataCreateTag = await createTagResponse.json();
+      //console.log(dataCreateTag)
+
+      res.send({ label: tag, termGuid: termId });
+    }
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
@@ -338,33 +353,49 @@ app.patch('/delTag', termMiddleware, async (req, res) => {
 
     const termId = foundTerm.id;
 
-    //---------------------DELETE TAG---------------------------
+    //---------------------GET GEOTAG COLUMN---------------------------
 
-    // Construct the new list of tags (excluding the one to be deleted)
-    const updatedTags = fileTags
-      .filter(existingTag => existingTag.label.toLowerCase() !== tag.toLowerCase())
-      .map(tag => tag.label + "|" + tag.termGuid + ";");  // To format the output: "TAG" | "termGuid";
-    console.log("Updated tags: " + updatedTags);
-
-    // Update the file's tags
-    const updateTagsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
-      method: 'PATCH',
+    const getColumnResponse = await fetch("https://graph.microsoft.com/v1.0/sites/" + siteId + "/lists/Documents/columns?$select=hidden,id,name,displayName&$filter=displayName eq 'GeoTag_0'", {
       headers: {
         'Content-Type': 'application/json',
-        'Prefer': 'apiversion=2.0',
-        'Authorization': token.accessToken,
-      },
-      body: JSON.stringify({
-        "o5c3b196e2d0422495d173d6e391d21f": updatedTags.join(''),
-      }),
-      redirect: 'follow',
+        'Prefer': 'apiversion=2.1',
+        'Authorization': token.accessToken
+      }
     });
+    const dataColumn = await getColumnResponse.json();
+    if (dataColumn.value.length === 0) {
+      res.send({ label: "columnNotFound", termGuid: "columnNotFound" });
+    } else {
+      nameGeoTAGColumn = dataColumn.value[0].name
+      //console.log(nameGeoTAGColumn)
 
-    const dataUpdateTags = await updateTagsResponse.json();
-    console.log("Data update tags: ", JSON.stringify(dataUpdateTags, null, 2));
+      //---------------------DELETE TAG---------------------------
 
-    res.send({ label: tag, termGuid: termId });
+      // Construct the new list of tags (excluding the one to be deleted)
+      const updatedTags = fileTags
+        .filter(existingTag => existingTag.label.toLowerCase() !== tag.toLowerCase())
+        .map(tag => tag.label + "|" + tag.termGuid + ";");  // To format the output: "TAG" | "termGuid";
+      console.log("Updated tags: " + updatedTags);
 
+      // Update the file's tags
+      const updateTagsResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/Documents/items/' + fileId + '/fields', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Prefer': 'apiversion=2.0',
+          'Authorization': token.accessToken,
+        },
+        body: JSON.stringify({
+          [nameGeoTAGColumn]: updatedTags.join(''),
+        }),
+        redirect: 'follow',
+      });
+
+      const dataUpdateTags = await updateTagsResponse.json();
+      console.log("Data update tags: ", JSON.stringify(dataUpdateTags, null, 2));
+
+      res.send({ label: tag, termGuid: termId });
+    }
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
@@ -376,7 +407,7 @@ app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
   try {
     const token = await getValidToken();
     const siteId = req.headers.siteid;
-    const nameTag = req.headers.nametag;
+    const nameTag = req.headers.nametag.toLowerCase();
 
     const termResponse = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/termStore/sets/' + req.termData.termSetId + '/terms', {
       headers: {
@@ -404,7 +435,7 @@ app.get('/seeTaggedFiles', termMiddleware, async (req, res) => {
         }
       });
       const dataTaggedFiles = await taggedFilesResponse.json();
-      //console.log(dataTaggedFiles);
+      console.log(dataTaggedFiles);
       res.send(dataTaggedFiles);
 
     } else {
