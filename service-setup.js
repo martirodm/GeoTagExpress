@@ -34,4 +34,4 @@ svc.on('uninstall', function() {
 });
 
 // Install the service.
-svc.uninstall();
+svc.install();
